@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraScore</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
+body { overflow-x: hidden; }
+
+/* ── Animated Background ── */
+#particles-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+/* ── Glow Utilities ── */
+.glow-purple { box-shadow: 0 0 30px rgba(139,92,246,.4), 0 0 60px rgba(139,92,246,.15); }
+.glow-text { text-shadow: 0 0 20px rgba(139,92,246,.6), 0 0 40px rgba(139,92,246,.3); }
+.glass { background: rgba(255,255,255,.06); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,.1); }
+
+/* ── Page transitions ── */
+.page { display: none; opacity: 0; transition: opacity .45s ease; }
+.page.active { display: flex; opacity: 1; }
+
+/* ── Rotating scanner ring ── */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 2.5s linear infinite; }
+
+/* ── Pulse glow ── */
+@keyframes pulse-glow { 0%,100% { box-shadow: 0 0 20px rgba(139,92,246,.5); } 50% { box-shadow: 0 0 45px rgba(139,92,246,.8), 0 0 80px rgba(59,130,246,.3); } }
+.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ── Float ── */
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.float { animation: float 3s ease-in-out infinite; }
+
+/* ── Aura ring rotation ── */
+@keyframes aura-spin { to { transform: rotate(360deg); } }
+.aura-ring { animation: aura-spin 6s linear infinite; }
+
+/* ── Fade-up entrance ── */
+@keyframes fade-up { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+.fade-up { animation: fade-up .6s ease forwards; }
+.fade-up-d1 { animation-delay: .1s; opacity: 0; }
+.fade-up-d2 { animation-delay: .2s; opacity: 0; }
+.fade-up-d3 { animation-delay: .3s; opacity: 0; }
+.fade-up-d4 { animation-delay: .4s; opacity: 0; }
+
+/* ── Scale-in popup ── */
+@keyframes scale-in { from { opacity:0; transform:scale(.85); } to { opacity:1; transform:scale(1); } }
+.scale-in { animation: scale-in .35s ease forwards; }
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(139,92,246,.4); border-radius: 3px; }
+
+/* ── Select styling ── */
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+/* ── Toast ── */
+@keyframes toast-in { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toast-out { from { opacity:1; } to { opacity:0; transform:translateY(-12px); } }
+.toast-enter { animation: toast-in .3s ease forwards; }
+.toast-exit { animation: toast-out .3s ease forwards; }
+
+/* ── Result bar fill ── */
+@keyframes bar-fill { from { width: 0; } }
+.bar-animate { animation: bar-fill 1s ease forwards; }
+</style>
+  <script>
+tailwind.config = {
+  theme: { extend: { colors: { aura: { 900: '#0a0a1a', 800: '#12122b', 700: '#1a1a3e', 600: '#8b5cf6', 500: '#a78bfa', 400: '#c4b5fd', 300: '#6366f1', accent: '#3b82f6' } } } }
+}
+</script>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-aura-900 text-white overflow-auto">
+  <canvas id="particles-canvas"></canvas><!-- ══════════════════ TOAST CONTAINER ══════════════════ -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none"></div><!-- ══════════════════ PAGE 1: LANDING ══════════════════ -->
+  <section id="page-landing" class="page active flex-col items-center justify-center min-h-full w-full relative z-10 px-4 py-12">
+   <div class="text-center max-w-lg mx-auto"><!-- Logo -->
+    <div class="fade-up mb-6">
+     <div class="inline-flex items-center gap-2 text-4xl sm:text-5xl font-800 tracking-tight"><span class="text-aura-600 glow-text" id="el-app-title">AuraScore</span> <span class="text-2xl">✦</span>
+     </div>
+    </div><!-- Headline -->
+    <h1 id="el-hero-headline" class="fade-up fade-up-d1 text-3xl sm:text-5xl font-700 leading-tight mb-4 bg-gradient-to-r from-aura-400 via-white to-aura-accent bg-clip-text text-transparent">Discover Your Hidden Energy</h1>
+    <p id="el-hero-subtitle" class="fade-up fade-up-d2 text-gray-400 text-base sm:text-lg mb-10 max-w-md mx-auto">Scan your aura and reveal your personality vibe</p><!-- CTA --> <button id="btn-start" class="fade-up fade-up-d3 pulse-glow bg-gradient-to-r from-aura-600 to-aura-accent text-white font-600 text-lg px-10 py-4 rounded-2xl hover:brightness-110 transition-all duration-300 active:scale-95"> <span id="el-cta-btn">Check My Aura</span> </button>
+    <p class="fade-up fade-up-d4 text-gray-500 text-sm mt-5">⚡ 3 Free Credits For New Users</p>
+   </div>
+  </section><!-- ══════════════════ PAGE 2: SCANNER FORM ══════════════════ -->
+  <section id="page-scanner" class="page flex-col items-center min-h-full w-full relative z-10 px-4 py-8 overflow-auto">
+   <div class="w-full max-w-2xl mx-auto"><!-- Header -->
+    <div class="flex items-center justify-between mb-8"><button id="btn-back-home" class="text-gray-400 hover:text-white transition"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+     <div class="flex items-center gap-3">
+      <div class="glass rounded-full px-4 py-1.5 text-sm font-500 flex items-center gap-1.5">
+       Credits: <span id="credit-badge" class="text-aura-500 font-700">3</span> ⚡
+      </div><button id="btn-upgrade-header" class="glass rounded-full px-4 py-1.5 text-sm font-600 text-aura-400 hover:border-aura-600/60 hover:bg-white/10 transition active:scale-95">Upgrade</button>
+     </div>
+    </div><!-- Card -->
+    <div class="glass rounded-3xl p-6 sm:p-8 glow-purple">
+     <h2 class="text-2xl font-700 mb-1 text-center">Aura Scanner</h2>
+     <p class="text-gray-400 text-sm text-center mb-8">Enter your details to begin the scan</p>
+     <form id="scan-form" class="space-y-6">
+      <!-- Photo Upload -->
+      <div>
+       <label class="block text-sm text-gray-300 mb-2 font-500 flex items-center gap-2"><i data-lucide="camera" class="w-4 h-4"></i> Photo (Required)</label>
+       <div id="photo-upload-box" class="border-2 border-dashed border-aura-600/40 rounded-2xl p-6 text-center cursor-pointer hover:border-aura-600/60 transition bg-white/3">
+        <input id="inp-photo" type="file" accept="image/*" class="hidden">
+        <div id="photo-placeholder" class="block">
+         <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-aura-400 mb-2"></i>
+         <p class="text-sm text-gray-300">Upload your photo to continue</p>
+         <p class="text-xs text-gray-500 mt-1">JPG, PNG up to 5MB</p>
+        </div>
+        <div id="photo-preview" class="hidden">
+         <img id="preview-img" class="w-24 h-24 rounded-lg object-cover mx-auto mb-2"> <button type="button" id="btn-remove-photo" class="text-red-400 text-xs hover:text-red-300 transition">Remove</button>
+        </div>
+       </div>
+      </div><!-- 2-Column Grid (Desktop) / Single Column (Mobile) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+       <!-- Full Name -->
+       <div>
+        <label for="inp-name" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="user" class="w-4 h-4"></i> Full Name</label> <input id="inp-name" type="text" placeholder="Your name" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-aura-600 transition text-sm" maxlength="40">
+       </div><!-- Date of Birth -->
+       <div>
+        <label for="inp-dob" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> Date of Birth</label> <input id="inp-dob" type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm">
+       </div><!-- Gender -->
+       <div>
+        <label for="inp-gender" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="circle-user" class="w-4 h-4"></i> Gender</label> <select id="inp-gender" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm"> <option value="" disabled selected class="text-gray-500 bg-aura-900">Select gender</option> <option value="Male" class="bg-aura-900">Male</option> <option value="Female" class="bg-aura-900">Female</option> <option value="Other" class="bg-aura-900">Other</option> </select>
+       </div><!-- Relationship Status -->
+       <div>
+        <label for="inp-relationship" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="heart" class="w-4 h-4"></i> Relationship</label> <select id="inp-relationship" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm"> <option value="" disabled selected class="text-gray-500 bg-aura-900">Select status</option> <option value="Single" class="bg-aura-900">Single</option> <option value="Taken" class="bg-aura-900">Taken</option> <option value="Complicated" class="bg-aura-900">Complicated</option> </select>
+       </div><!-- Work Style -->
+       <div>
+        <label for="inp-work" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4"></i> Work Style</label> <select id="inp-work" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm"> <option value="" disabled selected class="text-gray-500 bg-aura-900">Select work style</option> <option value="Student" class="bg-aura-900">Student</option> <option value="Job" class="bg-aura-900">Job</option> <option value="Business" class="bg-aura-900">Business</option> <option value="Creator" class="bg-aura-900">Creator</option> </select>
+       </div><!-- Favorite Color -->
+       <div>
+        <label for="inp-color" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i> Favorite Color</label> <select id="inp-color" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm"> <option value="" disabled selected class="text-gray-500 bg-aura-900">Select color</option> <option value="Red" class="bg-aura-900">Red</option> <option value="Blue" class="bg-aura-900">Blue</option> <option value="Green" class="bg-aura-900">Green</option> <option value="Purple" class="bg-aura-900">Purple</option> <option value="Pink" class="bg-aura-900">Pink</option> <option value="Black" class="bg-aura-900">Black</option> <option value="White" class="bg-aura-900">White</option> <option value="Gold" class="bg-aura-900">Gold</option> </select>
+       </div><!-- Mood Today -->
+       <div>
+        <label for="inp-mood" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="smile" class="w-4 h-4"></i> Mood Today</label> <select id="inp-mood" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-aura-600 transition text-sm"> <option value="" disabled selected class="text-gray-500 bg-aura-900">Select mood</option> <option value="Happy" class="bg-aura-900">Happy</option> <option value="Calm" class="bg-aura-900">Calm</option> <option value="Motivated" class="bg-aura-900">Motivated</option> <option value="Tired" class="bg-aura-900">Tired</option> <option value="Excited" class="bg-aura-900">Excited</option> <option value="Confused" class="bg-aura-900">Confused</option> </select>
+       </div><!-- Favorite Number -->
+       <div>
+        <label for="inp-number" class="block text-sm text-gray-300 mb-1.5 font-500 flex items-center gap-2"><i data-lucide="hash" class="w-4 h-4"></i> Favorite Number</label> <input id="inp-number" type="number" placeholder="1-99" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-aura-600 transition text-sm" min="1" max="99">
+       </div>
+      </div>
+      <div id="form-error" class="text-red-400 text-sm hidden text-center"></div><button type="submit" class="w-full mt-2 pulse-glow bg-gradient-to-r from-aura-600 to-aura-accent text-white font-600 text-lg py-4 rounded-2xl hover:brightness-110 transition-all duration-300 active:scale-95"> ✦ Reveal My Aura </button>
+     </form>
+    </div>
+   </div>
+  </section><!-- ══════════════════ PAGE 3: LOADING ══════════════════ -->
+  <section id="page-loading" class="page flex-col items-center justify-center min-h-full w-full relative z-10 px-4 py-12">
+   <div class="text-center"><!-- Rotating ring -->
+    <div class="relative w-40 h-40 mx-auto mb-8 float">
+     <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-aura-600 border-r-aura-accent spin-slow"></div>
+     <div class="absolute inset-3 rounded-full border-4 border-transparent border-b-aura-400 border-l-indigo-500 spin-slow" style="animation-direction:reverse;animation-duration:1.8s"></div>
+     <div class="absolute inset-0 flex items-center justify-center"><span class="text-4xl">✦</span>
+     </div>
+    </div>
+    <p id="scan-status" class="text-lg font-500 text-aura-400 transition-opacity duration-300">Reading vibrations...</p>
+   </div>
+  </section><!-- ══════════════════ PAGE 4: RESULT ══════════════════ -->
+  <section id="page-result" class="page flex-col items-center min-h-full w-full relative z-10 px-4 py-8 overflow-auto">
+   <div class="w-full max-w-md mx-auto space-y-5"><!-- Aura Ring -->
+    <div class="flex flex-col items-center mb-2 fade-up">
+     <div class="relative w-36 h-36 mb-3">
+      <svg class="w-full h-full aura-ring" viewbox="0 0 120 120"><defs>
+        <lineargradient id="aura-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+         <stop id="aura-stop1" offset="0%" stop-color="#8b5cf6" />
+         <stop id="aura-stop2" offset="100%" stop-color="#3b82f6" />
+        </lineargradient>
+       </defs> <circle cx="60" cy="60" r="54" fill="none" stroke="url(#aura-grad)" stroke-width="6" stroke-dasharray="8 4" opacity=".7" /> <circle cx="60" cy="60" r="44" fill="none" stroke="url(#aura-grad)" stroke-width="3" opacity=".4" />
+      </svg>
+      <div class="absolute inset-0 flex items-center justify-center flex-col"><span id="res-score" class="text-3xl font-800 text-white">87</span> <span class="text-[10px] text-gray-400 uppercase tracking-widest">Energy</span>
+      </div>
+     </div>
+     <h2 id="res-aura-color" class="text-xl font-700">Purple Aura</h2>
+     <p id="res-aura-meaning" class="text-gray-400 text-sm">Wisdom &amp; Intuition</p>
+    </div><!-- Stats -->
+    <div class="glass rounded-2xl p-5 space-y-4 fade-up fade-up-d1">
+     <div>
+      <div class="flex justify-between text-sm mb-1">
+       <span class="text-gray-300">Confidence Level</span><span id="res-confidence" class="text-aura-400 font-600">78%</span>
+      </div>
+      <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+       <div id="bar-confidence" class="h-full rounded-full bg-gradient-to-r from-aura-600 to-aura-accent bar-animate" style="width:78%"></div>
+      </div>
+     </div>
+     <div>
+      <div class="flex justify-between text-sm mb-1">
+       <span class="text-gray-300">Social Magnetism</span><span id="res-social" class="text-aura-400 font-600">65%</span>
+      </div>
+      <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+       <div id="bar-social" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 bar-animate" style="width:65%"></div>
+      </div>
+     </div>
+    </div>
+    <div class="glass rounded-2xl p-5 grid grid-cols-2 gap-4 text-center fade-up fade-up-d2">
+     <div>
+      <p class="text-gray-500 text-xs uppercase tracking-wide mb-1">Hidden Strength</p>
+      <p id="res-strength" class="font-600 text-sm">Leadership</p>
+     </div>
+     <div>
+      <p class="text-gray-500 text-xs uppercase tracking-wide mb-1">Lucky Day</p>
+      <p id="res-lucky" class="font-600 text-sm">Wednesday</p>
+     </div>
+    </div>
+    <div class="glass rounded-2xl p-5 text-center fade-up fade-up-d3">
+     <p class="text-gray-500 text-xs uppercase tracking-wide mb-2">Quote of the Day</p>
+     <p id="res-quote" class="text-sm italic text-gray-300 leading-relaxed">"Your energy introduces you before you speak."</p>
+    </div><!-- Actions -->
+    <div class="flex gap-3 fade-up fade-up-d4"><button id="btn-scan-again" class="flex-1 glass rounded-xl py-3 font-500 text-sm hover:bg-white/10 transition active:scale-95 flex items-center justify-center gap-1.5"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Scan Again</button> <button id="btn-share" class="flex-1 glass rounded-xl py-3 font-500 text-sm hover:bg-white/10 transition active:scale-95 flex items-center justify-center gap-1.5"><i data-lucide="share-2" class="w-4 h-4"></i> Share</button> <button id="btn-home" class="flex-1 glass rounded-xl py-3 font-500 text-sm hover:bg-white/10 transition active:scale-95 flex items-center justify-center gap-1.5"><i data-lucide="home" class="w-4 h-4"></i> Home</button>
+    </div>
+   </div>
+  </section><!-- ══════════════════ UPGRADE MODAL ══════════════════ --> <!-- ══════════════════ UPGRADE MODAL ══════════════════ -->
+  <div id="modal-upgrade" class="fixed inset-0 z-50 hidden items-center justify-center px-4" style="background:rgba(0,0,0,.7);backdrop-filter:blur(8px)">
+   <div class="glass rounded-3xl p-6 sm:p-8 w-full max-w-sm scale-in text-center">
+    <div class="text-4xl mb-3">
+     🔒
+    </div>
+    <h3 id="upgrade-title" class="text-xl font-700 mb-2">
+    Your Free Credits Are Over
+    </h3>
+
+    <p id="upgrade-desc" class="text-gray-400 text-sm mb-8 leading-relaxed">
+    You've used all 3 free aura scans. Upgrade to unlock unlimited hidden results.
+    </p>
+    <!-- Plans Grid -->
+    <div class="space-y-3 mb-6">
+     <!-- Plan 1: ₹19 --> <button class="plan-card w-full glass rounded-2xl p-5 text-left hover:border-aura-600/60 hover:bg-white/8 transition active:scale-[.98] group" data-price="19" data-credits="5">
+      <div class="flex justify-between items-start">
+       <div>
+        <p class="text-sm font-600 text-gray-300">5 Credits</p>
+        <p class="text-2xl font-700 text-aura-400">₹19</p>
+       </div>
+       <div class="text-xl group-hover:scale-110 transition">
+        →
+       </div>
+      </div></button> <!-- Plan 2: ₹39 (Most Popular) --> <button class="plan-card w-full glass rounded-2xl p-5 text-left border border-aura-600/40 hover:border-aura-600/60 hover:bg-white/8 transition active:scale-[.98] group relative" data-price="39" data-credits="15">
+      <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-aura-600 to-aura-accent text-white text-xs font-700 px-3 py-1 rounded-full">
+       Most Popular
+      </div>
+      <div class="flex justify-between items-start">
+       <div>
+        <p class="text-sm font-600 text-gray-300">15 Credits</p>
+        <p class="text-2xl font-700 text-aura-400">₹39</p>
+       </div>
+       <div class="text-xl group-hover:scale-110 transition">
+        →
+       </div>
+      </div></button> <!-- Plan 3: ₹69 --> <button class="plan-card w-full glass rounded-2xl p-5 text-left hover:border-aura-600/60 hover:bg-white/8 transition active:scale-[.98] group relative" data-price="69" data-credits="unlimited">
+      <div class="absolute -top-3 right-5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-700 px-3 py-1 rounded-full">
+       Best Value
+      </div>
+      <div class="flex justify-between items-start">
+       <div>
+        <p class="text-sm font-600 text-gray-300">Unlimited Monthly</p>
+        <p class="text-2xl font-700 text-aura-400">₹69</p>
+       </div>
+       <div class="text-xl group-hover:scale-110 transition">
+        →
+       </div>
+      </div></button>
+    </div>
+    <div class="flex gap-3">
+     <button id="btn-maybe-later" class="flex-1 glass rounded-xl py-3 font-500 text-sm hover:bg-white/10 transition active:scale-95">Maybe Later</button>
+    </div>
+   </div>
+  </div><!-- ══════════════════ PAYMENT MODAL (COMPLETE UPGRADE) ══════════════════ -->
+  <div id="modal-payment" class="fixed inset-0 z-50 hidden items-center justify-center px-4" style="background:rgba(0,0,0,.7);backdrop-filter:blur(8px)">
+   <div class="glass rounded-3xl p-6 sm:p-8 w-full max-w-sm scale-in text-center">
+    <button id="btn-payment-close" class="absolute top-4 right-4 text-gray-400 hover:text-white transition"> <i data-lucide="x" class="w-5 h-5"></i> </button>
+    <h3 class="text-xl font-700 mb-2">Complete Upgrade</h3>
+    <p id="selected-plan-text" class="text-gray-400 text-sm mb-6">₹39 • 15 Credits</p>
+    <!-- QR Code -->
+    <div class="glass rounded-2xl p-6 inline-block mb-4">
+      
+    <img id="payment-qr"
+    src="qr39.jpeg"
+    alt="UPI QR Code"
+    class="w-40 h-40 mx-auto rounded-lg">
+
+    </div>
+    <div class="mt-4 grid gap-2 mb-4">
+  
+      <div class="glass rounded-xl px-4 py-2 text-sm text-emerald-400 font-600">
+        🔒 Secure UPI Payment
+      </div>
+
+      <div class="glass rounded-xl px-4 py-2 text-sm text-aura-400 font-600">
+        ⚡ Instant Credits After Verification
+      </div>
+
+      <div class="glass rounded-xl px-4 py-2 text-sm text-pink-400 font-600">
+        🔥 128 users upgraded today
+      </div>
+
+    </div>
+    <!-- UPI ID -->
+    <div class="mb-4">
+     <p class="text-gray-500 text-xs uppercase tracking-wide mb-2">UPI ID</p>
+     <div class="flex gap-2 items-center bg-white/5 rounded-xl px-3 py-2">
+      <span id="upi-id-text" class="text-sm text-gray-300 flex-1">shankarpyke191@okhdfcbank</span> <button id="btn-copy-upi" class="text-aura-400 hover:text-aura-300 transition" title="Copy UPI ID"> <i data-lucide="copy" class="w-4 h-4"></i> </button>
+     </div>
+    </div><!-- Promo Code Section -->
+    <div class="mb-6">
+     <p class="text-gray-500 text-xs uppercase tracking-wide mb-2">Have a Promo Code?</p>
+     <div class="flex gap-2">
+      <input id="inp-promo" type="text" placeholder="Enter promo code" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-aura-600 transition"> <button id="btn-apply-promo" class="bg-aura-600 text-white font-600 text-sm px-4 rounded-xl hover:brightness-110 transition active:scale-95">Apply</button>
+     </div>
+     <p id="promo-error" class="text-red-400 text-xs mt-2 hidden"></p>
+    </div>
+    <p class="text-xs text-gray-300 mt-2">
+    Credits added manually after payment verification
+    </p>
+   </div>
+  </div>
+  <script>
+/* ══════════════════ PARTICLES ══════════════════ */
+(function(){
+  const c=document.getElementById('particles-canvas'),ctx=c.getContext('2d');
+  let W,H,particles=[];
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+  resize(); window.addEventListener('resize',resize);
+  for(let i=0;i<50;i++) particles.push({x:Math.random()*2000,y:Math.random()*2000,r:Math.random()*2+.5,dx:(Math.random()-.5)*.3,dy:(Math.random()-.5)*.3,a:Math.random()*.4+.1});
+  function draw(){ctx.clearRect(0,0,W,H);particles.forEach(p=>{p.x+=p.dx;p.y+=p.dy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(139,92,246,${p.a})`;ctx.fill();});requestAnimationFrame(draw);}
+  draw();
+})();
+
+/* ══════════════════ STATE ══════════════════ */
+let credits = parseInt(localStorage.getItem('aura_credits') ?? '');
+if(isNaN(credits)){ credits=3; localStorage.setItem('aura_credits','3'); }
+
+let photoData = localStorage.getItem('aura_photo') || null;
+let selectedPlan = {price: 39, credits: 15};
+
+function saveCredits(){ localStorage.setItem('aura_credits', String(credits)); updateCreditBadge(); }
+function updateCreditBadge(){ document.getElementById('credit-badge').textContent = credits; }
+updateCreditBadge();
+
+/* ══════════════════ NAVIGATION ══════════════════ */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');});
+  const el=document.getElementById(id);
+  el.classList.add('active');
+  // re-trigger fade-up animations
+  el.querySelectorAll('.fade-up,.fade-up-d1,.fade-up-d2,.fade-up-d3,.fade-up-d4').forEach(e=>{
+    e.style.animation='none'; e.offsetHeight; e.style.animation='';
+  });
+}
+
+/* ══════════════════ TOAST ══════════════════ */
+function toast(msg, type='info'){
+  const colors={info:'from-aura-600 to-aura-accent',success:'from-emerald-500 to-teal-500',error:'from-red-500 to-rose-600'};
+  const t=document.createElement('div');
+  t.className=`pointer-events-auto bg-gradient-to-r ${colors[type]} text-white text-sm font-500 px-5 py-2.5 rounded-xl shadow-lg toast-enter`;
+  t.textContent=msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(()=>{t.classList.remove('toast-enter');t.classList.add('toast-exit');setTimeout(()=>t.remove(),300);},2500);
+}
+
+/* ══════════════════ RESULT GENERATOR ══════════════════ */
+const AURA_MAP={Red:{meaning:'Power & Passion',c1:'#ef4444',c2:'#f97316'},Blue:{meaning:'Calm & Depth',c1:'#3b82f6',c2:'#06b6d4'},Green:{meaning:'Growth & Harmony',c1:'#22c55e',c2:'#10b981'},Purple:{meaning:'Wisdom & Intuition',c1:'#8b5cf6',c2:'#a855f7'},Pink:{meaning:'Love & Compassion',c1:'#ec4899',c2:'#f472b6'},Black:{meaning:'Mystery & Protection',c1:'#6b7280',c2:'#374151'},White:{meaning:'Pure Energy & Light',c1:'#e5e7eb',c2:'#9ca3af'},Gold:{meaning:'Success & Abundance',c1:'#f59e0b',c2:'#eab308'}};
+const STRENGTHS=['Leadership','Creativity','Discipline','Charm','Intelligence','Courage','Empathy','Resilience'];
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const QUOTES=['"Your energy introduces you before you speak."','"The universe is not outside of you."','"Trust the vibrations you feel."','"You are a cosmic event."','"Energy flows where intention goes."','"Stars cannot shine without darkness."'];
+
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h);}
+
+function generateResult(name,dob,gender,relationship,work,color,mood,number,hasPhoto){
+  const h=hash(name+dob+gender+relationship+work+color+mood+number);
+  const a=AURA_MAP[color]||AURA_MAP.Purple;
+  let score=40+((h%61));
+  
+  // Adjust based on details
+  if(gender==='Female') score+=3;
+  if(relationship==='Taken') score+=5;
+  if(work==='Creator') score+=4;
+  if(hasPhoto) score+=2;
+  
+  score=Math.min(score,99);
+  
+  const confidence=35+((h>>3)%56);
+  let social=30+((h>>6)%61);
+  if(relationship==='Single') social+=8;
+  if(work==='Creator') social+=5;
+  
+  const strength=STRENGTHS[h%STRENGTHS.length];
+  let lucky=DAYS[(h>>2)%7];
+  const luckyNum=(parseInt(number)+h)%99+1;
+  lucky=lucky+' (#'+luckyNum+')';
+  
+  const quote=QUOTES[h%QUOTES.length];
+  let resonance='';
+  if(hasPhoto) resonance='Visual energy resonance detected. ';
+  
+  return{auraColor:color,meaning:a.meaning,c1:a.c1,c2:a.c2,score,confidence,social,strength,lucky,quote,resonance,gender,work};
+}
+
+function renderResult(r){
+  document.getElementById('aura-stop1').setAttribute('stop-color',r.c1);
+  document.getElementById('aura-stop2').setAttribute('stop-color',r.c2);
+  document.getElementById('res-score').textContent=r.score;
+  document.getElementById('res-aura-color').textContent=r.auraColor+' Aura';
+  document.getElementById('res-aura-meaning').textContent=r.meaning;
+  document.getElementById('res-confidence').textContent=r.confidence+'%';
+  document.getElementById('res-social').textContent=r.social+'%';
+  document.getElementById('bar-confidence').style.width=r.confidence+'%';
+  document.getElementById('bar-social').style.width=r.social+'%';
+  document.getElementById('res-strength').textContent=r.strength;
+  document.getElementById('res-lucky').textContent=r.lucky;
+  document.getElementById('res-quote').textContent=r.quote;
+}
+
+/* ══════════════════ SCAN FLOW ══════════════════ */
+const scanMessages=['Reading vibrations...','Matching cosmic frequency...','Detecting hidden power...','Finalizing aura result...'];
+let lastFormData=null;
+
+document.getElementById('scan-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const name=document.getElementById('inp-name').value.trim();
+  const dob=document.getElementById('inp-dob').value;
+  const gender=document.getElementById('inp-gender').value;
+  const relationship=document.getElementById('inp-relationship').value;
+  const work=document.getElementById('inp-work').value;
+  const color=document.getElementById('inp-color').value;
+  const mood=document.getElementById('inp-mood').value;
+  const number=document.getElementById('inp-number').value;
+  const errEl=document.getElementById('form-error');
+
+  if(!name || !dob || !gender || !relationship || !work || !color || !mood || !number || !photoData){
+    errEl.textContent='Please fill all fields and upload your photo';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+  lastFormData={name,dob,gender,relationship,work,color,mood,number,hasPhoto:!!photoData};
+
+  // Start loading
+  showPage('page-loading');
+  let step=0;
+  const statusEl=document.getElementById('scan-status');
+  statusEl.textContent=scanMessages[0];
+  const iv=setInterval(()=>{step++;if(step<scanMessages.length){statusEl.style.opacity='0';setTimeout(()=>{statusEl.textContent=scanMessages[step];statusEl.style.opacity='1';},200);}},1000);
+
+  setTimeout(()=>{
+    clearInterval(iv);
+    if(credits>0){
+      credits--;saveCredits();
+      const r=generateResult(lastFormData.name,lastFormData.dob,lastFormData.gender,lastFormData.relationship,lastFormData.work,lastFormData.color,lastFormData.mood,lastFormData.number,lastFormData.hasPhoto);
+      renderResult(r);
+      showPage('page-result');
+    } else {
+      showPage('page-scanner');
+      openUpgradeModal('limit');
+    }
+  },4200);
+});
+
+/* ══════════════════ UPGRADE MODAL ══════════════════ */
+function openUpgradeModal(source = 'manual'){
+
+  const title = document.getElementById('upgrade-title');
+  const desc = document.getElementById('upgrade-desc');
+
+  if(source === 'manual'){
+
+    if(credits >= 3){
+      title.textContent = 'Unlock Premium Aura Access';
+      desc.textContent = 'Start stronger with extra scans, faster access and premium results.';
+    }
+
+    else if(credits > 0){
+      title.textContent = 'Upgrade Before Credits End';
+      desc.textContent = `You still have ${credits} credit${credits > 1 ? 's' : ''}. Upgrade now and avoid interruptions.`;
+    }
+
+    else{
+      title.textContent = 'Continue Your Aura Journey';
+      desc.textContent = 'Your free credits are finished. Upgrade now to keep scanning.';
+    }
+
+  } else {
+
+    title.textContent = 'Your Free Credits Are Over';
+    desc.textContent = 'You used all free scans. Upgrade now to continue instantly.';
+  }
+
+  const m = document.getElementById('modal-upgrade');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+
+function closeUpgradeModal(){
+  const m=document.getElementById('modal-upgrade');
+  m.classList.add('hidden');m.classList.remove('flex');
+}
+function openPaymentModal(){
+  const m=document.getElementById('modal-payment');
+  m.classList.remove('hidden');m.classList.add('flex');
+}
+function closePaymentModal(){
+  const m=document.getElementById('modal-payment');
+  m.classList.add('hidden');m.classList.remove('flex');
+}
+
+document.getElementById('btn-maybe-later').addEventListener('click', closeUpgradeModal);
+
+// Plan card clicks
+document.querySelectorAll('.plan-card').forEach(b=>{
+  b.addEventListener('click',()=>{
+
+    selectedPlan = {
+      price: parseInt(b.dataset.price),
+      credits: b.dataset.credits
+    };
+
+    const qrImg = document.getElementById('payment-qr');
+
+    if(b.dataset.price === '19'){
+      qrImg.src = 'qr19.jpeg';
+    }
+    else if(b.dataset.price === '39'){
+      qrImg.src = 'qr39.jpeg';
+    }
+    else if(b.dataset.price === '69'){
+      qrImg.src = 'qr69.jpeg';
+    }
+
+    document.getElementById('selected-plan-text').textContent =
+    b.dataset.credits === 'unlimited'
+    ? `₹${b.dataset.price} • Unlimited Monthly`
+    : `₹${b.dataset.price} • ${b.dataset.credits} Credits`;
+
+    closeUpgradeModal();
+    openPaymentModal();
+
+  });
+});
+
+// Payment modal close
+document.getElementById('btn-payment-close').addEventListener('click', ()=>{
+  closePaymentModal();
+  openUpgradeModal('manual');
+});
+
+// Copy UPI
+document.getElementById('btn-copy-upi').addEventListener('click', ()=>{
+  const upiText=document.getElementById('upi-id-text').textContent;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(upiText).then(()=>toast('UPI ID copied!','success')).catch(()=>toast('Could not copy','error'));
+  }
+});
+
+// Promo code
+document.getElementById('btn-apply-promo').addEventListener('click', ()=>{
+  const code=document.getElementById('inp-promo').value.trim();
+  const errEl=document.getElementById('promo-error');
+  if(code==='2006'){
+    credits+=5;saveCredits();
+    errEl.classList.add('hidden');
+    closePaymentModal();
+    closeUpgradeModal();
+    toast('+5 credits added with promo!','success');
+    document.getElementById('inp-promo').value='';
+    showPage('page-scanner');
+  } else {
+    errEl.textContent='Invalid promo code. Try again.';errEl.classList.remove('hidden');
+  }
+});
+
+/* ══════════════════ NAV BUTTONS ══════════════════ */
+document.getElementById('btn-start').addEventListener('click', ()=>showPage('page-scanner'));
+document.getElementById('btn-back-home').addEventListener('click', ()=>{showPage('page-landing');clearForm();});
+document.getElementById('btn-scan-again').addEventListener('click', ()=>{showPage('page-scanner');clearForm();});
+document.getElementById('btn-home').addEventListener('click', ()=>{showPage('page-landing');clearForm();});
+document.getElementById('btn-upgrade-header').addEventListener('click', ()=>{
+  openUpgradeModal('manual');
+});
+document.getElementById('btn-share').addEventListener('click', ()=>{
+  if(navigator.clipboard&&lastFormData){
+    const r=generateResult(lastFormData.name,lastFormData.dob,lastFormData.gender,lastFormData.relationship,lastFormData.work,lastFormData.color,lastFormData.mood,lastFormData.number,lastFormData.hasPhoto);
+    const text=`✦ My AuraScore Result ✦\nAura: ${r.auraColor} (${r.meaning})\nEnergy: ${r.score}/100\nStrength: ${r.strength}\nLucky Day: ${r.lucky}`;
+    navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard!','success')).catch(()=>toast('Could not copy','error'));
+  } else { toast('Nothing to share yet','info'); }
+});
+
+function clearForm(){
+  document.getElementById('scan-form').reset();
+  photoData=null;
+  localStorage.removeItem('aura_photo');
+  document.getElementById('photo-placeholder').classList.remove('hidden');
+  document.getElementById('photo-preview').classList.add('hidden');
+}
+
+/* ══════════════════ ELEMENT SDK ══════════════════ */
+const defaultConfig={
+  app_title:'AuraScore',
+  hero_headline:'Discover Your Hidden Energy',
+  hero_subtitle:'Scan your aura and reveal your personality vibe',
+  cta_text:'Check My Aura',
+  upi_id:'example@upi',
+  background_color:'#0a0a1a',
+  surface_color:'rgba(255,255,255,0.06)',
+  text_color:'#ffffff',
+  primary_action:'#8b5cf6',
+  secondary_action:'#3b82f6',
+  font_family:'Outfit',
+  font_size:16
+};
+
+function applyConfig(cfg){
+  const g=k=>cfg[k]||defaultConfig[k];
+  document.getElementById('el-app-title').textContent=g('app_title');
+  document.getElementById('el-hero-headline').textContent=g('hero_headline');
+  document.getElementById('el-hero-subtitle').textContent=g('hero_subtitle');
+  document.getElementById('el-cta-btn').textContent=g('cta_text');
+  document.getElementById('upi-id-text').textContent=g('upi_id');
+
+  document.body.style.backgroundColor=g('background_color');
+  document.body.style.color=g('text_color');
+  document.body.style.fontFamily=`${g('font_family')}, sans-serif`;
+
+  const base=g('font_size');
+  document.querySelectorAll('h1').forEach(e=>e.style.fontSize=`${base*2.2}px`);
+  document.querySelectorAll('h2').forEach(e=>e.style.fontSize=`${base*1.5}px`);
+  document.querySelectorAll('h3').forEach(e=>e.style.fontSize=`${base*1.25}px`);
+}
+
+lucide.createIcons();
+
+/* ══════════════════ PHOTO UPLOAD ══════════════════ */
+const photoBox=document.getElementById('photo-upload-box');
+const photoInput=document.getElementById('inp-photo');
+const photoPlaceholder=document.getElementById('photo-placeholder');
+const photoPreview=document.getElementById('photo-preview');
+const previewImg=document.getElementById('preview-img');
+const btnRemovePhoto=document.getElementById('btn-remove-photo');
+
+photoBox.addEventListener('click',()=>photoInput.click());
+photoInput.addEventListener('change',(e)=>{
+  const file=e.target.files[0];
+  if(file&&file.size<=5242880){
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      photoData=ev.target.result;
+      localStorage.setItem('aura_photo',photoData);
+      previewImg.src=photoData;
+      photoPlaceholder.classList.add('hidden');
+      photoPreview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    toast('Please select an image under 5MB','error');
+  }
+});
+
+btnRemovePhoto.addEventListener('click',(e)=>{
+  e.preventDefault();
+  photoData=null;
+  localStorage.removeItem('aura_photo');
+  photoInput.value='';
+  photoPlaceholder.classList.remove('hidden');
+  photoPreview.classList.add('hidden');
+});
+</script>
+</html>
